@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -94,120 +94,119 @@
 </head>
 <body>
 
-  <header>
-    <h1>Remou™</h1>
-    <p>Green Screen Video Remover by Engineering Softcodes ™</p>
-  </header>
+<header>
+  <h1>Remou™</h1>
+  <p>Green Screen Video Remover by Engineering Softcodes ™</p>
+</header>
 
-  <div class="container">
-    <div class="uploader">
-      <p>Select your green screen video file:</p>
-      <input type="file" id="videoUpload" accept="video/mp4,video/webm"/>
-      <br/>
-      <select id="downloadFormat" disabled>
-        <option value="webm" selected>WebM (Browser Supported)</option>
-      </select>
-      <button onclick="processVideo()">Remove Background</button>
-    </div>
-
-    <div id="status"></div>
-    <canvas id="canvas"></canvas>
-
-    <div class="download-btns" id="downloadSection" style="display:none;">
-      <button onclick="downloadVideo()">Download Processed Video</button>
-      <a id="manualDownload" href="#" download>Click here if download doesn't start</a>
-    </div>
+<div class="container">
+  <div class="uploader">
+    <p>Select your green screen video file:</p>
+    <input type="file" id="videoUpload" accept="video/mp4,video/webm"/>
+    <br/>
+    <select id="downloadFormat" disabled>
+      <option value="webm" selected>WebM (Browser Supported)</option>
+    </select>
+    <button onclick="processVideo()">Remove Background</button>
   </div>
 
-  <footer>
-    Made by Engineering Softcodes ™ | <a href="mailto:engineeringsoftcodes@mail.com">engineeringsoftcodes@mail.com</a><br/>
-    <a href="#">Privacy Policy</a> •
-    <a href="#">Terms of Service</a> •
-    <a href="#">Legal</a> •
-    <a href="#">About</a>
-    <div style="font-size: 13px; color: #b2bec3;">
-      Disclaimer: Please report any bugs, complaints, or issues by contacting us at 
-      <a href="mailto:engineeringsoftcodes@mail.com">engineeringsoftcodes@mail.com</a>.<br/>
-      We are committed to resolving issues respectfully and professionally.<br/>
-      For legal matters, we kindly ask that formal notices be delivered through the appropriate legal channels. We reserve the right to disregard any messages that appear abusive, fraudulent, or do not follow proper legal process.
-    </div>
-  </footer>
+  <div id="status"></div>
+  <canvas id="canvas"></canvas>
 
-  <script>
-  const canvas = document.getElementById('canvas');
-  const ctx = canvas.getContext('2d');
-  const video = document.createElement('video');
-  const downloadFormat = document.getElementById('downloadFormat');
-  let stream, recorder, chunks = [];
+  <div class="download-btns" id="downloadSection" style="display:none;">
+    <button onclick="downloadVideo()">Download Processed Video</button>
+    <a id="manualDownload" href="#" download>Click here if download doesn't start</a>
+  </div>
+</div>
 
-  function processVideo() {
-    const file = document.getElementById('videoUpload').files[0];
-    const status = document.getElementById("status");
-    if (!file) return alert("Please select a video.");
-    
-    chunks = [];
-    video.src = URL.createObjectURL(file);
-    video.crossOrigin = "anonymous";
-    video.muted = true;
+<footer>
+  Made by Engineering Softcodes ™ | <a href="mailto:engineeringsoftcodes@mail.com">engineeringsoftcodes@mail.com</a><br/>
+  <a href="#">Privacy Policy</a> •
+  <a href="#">Terms of Service</a> •
+  <a href="#">Legal</a> •
+  <a href="#">About</a>
+  <div style="font-size: 13px; color: #b2bec3;">
+    Disclaimer: Please report any bugs, complaints, or issues by contacting us.<br/>
+    For legal matters, we ask that formal notices be delivered via appropriate channels.
+  </div>
+</footer>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const video = document.createElement('video');
+const downloadFormat = document.getElementById('downloadFormat');
+let stream, recorder, chunks = [];
+
+function processVideo() {
+  const file = document.getElementById('videoUpload').files[0];
+  const status = document.getElementById("status");
+
+  if (!file) return alert("Please select a video.");
+
+  chunks = [];
+  video.src = URL.createObjectURL(file);
+  video.crossOrigin = "anonymous";
+  video.muted = true;
+  video.load();
+
+  status.innerText = "⏳ Preparing video...";
+
+  video.onloadedmetadata = () => {
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    stream = canvas.captureStream(30);
+    recorder = new MediaRecorder(stream);
+    recorder.ondataavailable = e => chunks.push(e.data);
+    recorder.onstop = () => {
+      const blob = new Blob(chunks, { type: 'video/webm' });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'remou_output.webm';
+      a.click();
+
+      document.getElementById("manualDownload").href = url;
+      document.getElementById("manualDownload").style.display = "inline-block";
+
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    };
+
+    status.innerText = "⏳ Removing green screen and recording...";
+    recorder.start();
     video.play();
+    drawFrame();
+  };
+}
 
-    status.innerText = "⏳ Processing video, please wait...";
-    document.getElementById('downloadSection').style.display = 'none';
-
-    video.addEventListener('loadeddata', () => {
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-
-      stream = canvas.captureStream(30);
-      recorder = new MediaRecorder(stream);
-      recorder.ondataavailable = e => chunks.push(e.data);
-      recorder.onstop = () => {
-  const blob = new Blob(chunks, { type: 'video/webm' });
-  const url = URL.createObjectURL(blob);
-
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `remou_output.webm`;
-  a.click();
-
-  document.getElementById("manualDownload").href = url;
-  document.getElementById("manualDownload").style.display = "inline-block";
-
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
-};
-
-      recorder.start();
-
-      const draw = () => {
-        if (video.ended || video.paused) {
-          recorder.stop();
-          document.getElementById("status").innerText = "✅ Done! Ready to download.";
-          document.getElementById('downloadSection').style.display = 'block';
-          return;
-        }
-
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        let frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        let data = frame.data;
-
-        for (let i = 0; i < data.length; i += 4) {
-          let r = data[i], g = data[i + 1], b = data[i + 2];
-          if (g > 100 && r < 100 && b < 100) {
-            data[i + 3] = 0;
-          }
-        }
-
-        ctx.putImageData(frame, 0, 0);
-        requestAnimationFrame(draw);
-      };
-
-      draw();
-    });
+function drawFrame() {
+  if (video.paused || video.ended) {
+    recorder.stop();
+    document.getElementById("status").innerText = "✅ Done! Ready to download.";
+    document.getElementById('downloadSection').style.display = 'block';
+    return;
   }
 
-  function downloadVideo() {
-    // No need to trigger again here. The file will auto-download after processing.
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  let frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  let data = frame.data;
+
+  for (let i = 0; i < data.length; i += 4) {
+    let r = data[i], g = data[i + 1], b = data[i + 2];
+    if (g > 100 && r < 100 && b < 100) {
+      data[i + 3] = 0; // Transparent
+    }
   }
+
+  ctx.putImageData(frame, 0, 0);
+  requestAnimationFrame(drawFrame);
+}
+
+function downloadVideo() {
+  // Optional manual trigger
+}
 </script>
 </body>
-</html> 
+     </html>
