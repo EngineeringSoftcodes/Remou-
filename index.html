@@ -105,7 +105,8 @@
       <input type="file" id="videoUpload" accept="video/mp4,video/webm"/>
       <br/>
       <select id="downloadFormat">
-        <option value="webm">WebM (Recommended)</option>
+        <option value="webm">WebM</option>
+        <option value="mp4">mp4</option>
       </select>
       <button onclick="processVideo()">Remove Background</button>
     </div>
@@ -134,93 +135,80 @@
   </footer>
 
   <script>
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    const video = document.createElement('video');
-    let frames = [];
-    let recorder;
-    let stream;
-    let chunks = [];
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const video = document.createElement('video');
+  const downloadFormat = document.getElementById('downloadFormat');
+  let stream, recorder, chunks = [];
 
-    function processVideo() {
-      const file = document.getElementById('videoUpload').files[0];
-      const status = document.getElementById("status");
-      if (!file) return alert("Please select a video.");
-      frames = [];
-      chunks = [];
+  function processVideo() {
+    const file = document.getElementById('videoUpload').files[0];
+    const status = document.getElementById("status");
+    if (!file) return alert("Please select a video.");
+    
+    chunks = [];
+    video.src = URL.createObjectURL(file);
+    video.crossOrigin = "anonymous";
+    video.muted = true;
+    video.play();
 
-      video.src = URL.createObjectURL(file);
-      video.muted = true;
-      video.crossOrigin = "anonymous";
-      video.play();
+    status.innerText = "⏳ Processing video, please wait...";
+    document.getElementById('downloadSection').style.display = 'none';
 
-      status.innerText = "⏳ Processing video, please wait...";
+    video.addEventListener('loadeddata', () => {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
 
-      video.addEventListener('loadeddata', () => {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-
-        const draw = () => {
-          if (video.paused || video.ended) {
-            finishProcessing();
-            return;
-          }
-
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          let frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          let data = frame.data;
-
-          for (let i = 0; i < data.length; i += 4) {
-            let r = data[i], g = data[i + 1], b = data[i + 2];
-            if (g > 100 && r < 100 && b < 100) {
-              data[i + 3] = 0;
-            }
-          }
-
-          ctx.putImageData(frame, 0, 0);
-          requestAnimationFrame(draw);
-        };
-
-        video.play();
-        draw();
-      });
-    }
-
-    function finishProcessing() {
-      document.getElementById("status").innerText = "✅ Done! Ready to download.";
-      document.getElementById('downloadSection').style.display = 'block';
-    }
-
-    function downloadVideo() {
-      const format = document.getElementById("downloadFormat").value;
       stream = canvas.captureStream(30);
       recorder = new MediaRecorder(stream);
-      chunks = [];
-
       recorder.ondataavailable = e => chunks.push(e.data);
       recorder.onstop = () => {
-        const blob = new Blob(chunks, { type: `video/${format}` });
+        const blob = new Blob(chunks, { type: `video/${downloadFormat.value}` });
         const url = URL.createObjectURL(blob);
 
         const a = document.createElement('a');
-        a.style.display = 'none';
         a.href = url;
-        a.download = `remou_output.${format}`;
-        document.body.appendChild(a);
-
+        a.download = `remou_output.${downloadFormat.value}`;
         a.click();
+
         document.getElementById("manualDownload").href = url;
         document.getElementById("manualDownload").style.display = "inline-block";
 
-        setTimeout(() => {
-          URL.revokeObjectURL(url);
-          a.remove();
-        }, 2000);
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
       };
 
       recorder.start();
-      setTimeout(() => recorder.stop(), 5000); // capture 5 seconds
-    }
-  </script>
+
+      const draw = () => {
+        if (video.ended || video.paused) {
+          recorder.stop();
+          document.getElementById("status").innerText = "✅ Done! Ready to download.";
+          document.getElementById('downloadSection').style.display = 'block';
+          return;
+        }
+
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        let frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        let data = frame.data;
+
+        for (let i = 0; i < data.length; i += 4) {
+          let r = data[i], g = data[i + 1], b = data[i + 2];
+          if (g > 100 && r < 100 && b < 100) {
+            data[i + 3] = 0;
+          }
+        }
+
+        ctx.putImageData(frame, 0, 0);
+        requestAnimationFrame(draw);
+      };
+
+      draw();
+    });
+  }
+
+  function downloadVideo() {
+    // No need to trigger again here. The file will auto-download after processing.
+  }
+</script>
 </body>
-  </html>
+</html> 
