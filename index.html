@@ -64,6 +64,12 @@
       background: #4834d4;
     }
 
+    #manualDownload {
+      display: none;
+      margin-top: 10px;
+      font-size: 14px;
+    }
+
     footer {
       margin-top: 60px;
       background: #dfe6e9;
@@ -103,22 +109,23 @@
 
     <div class="download-btns" id="downloadSection" style="display:none;">
       <button onclick="downloadVideo()">Download Processed Video</button>
+      <a id="manualDownload" href="#" download>Click here if download doesn't start</a>
     </div>
   </div>
 
   <footer>
-  Made by Engineering Softcodes ™ | <a href="mailto:engineeringsoftcodes@mail.com">engineeringsoftcodes@mail.com</a><br/>
-  <a href="#">Privacy Policy</a> •
-  <a href="#">Terms of Service</a> •
-  <a href="#">Legal</a> •
-  <a href="#">About</a>
-  <div style="font-size: 13px; color: #b2bec3;">
-  Disclaimer: Please report any bugs, complaints, or issues by contacting us at 
-  <a href="mailto:engineeringsoftcodes@mail.com">engineeringsoftcodes@mail.com</a>.<br/>
-  We are committed to resolving issues respectfully and professionally.<br/>
-  For legal matters, we kindly ask that formal notices be delivered through the appropriate legal channels. We reserve the right to disregard any messages that appear abusive, fraudulent, or do not follow proper legal process.
-</div>
-</footer>
+    Made by Engineering Softcodes ™ | <a href="mailto:engineeringsoftcodes@mail.com">engineeringsoftcodes@mail.com</a><br/>
+    <a href="#">Privacy Policy</a> •
+    <a href="#">Terms of Service</a> •
+    <a href="#">Legal</a> •
+    <a href="#">About</a>
+    <div style="font-size: 13px; color: #b2bec3;">
+      Disclaimer: Please report any bugs, complaints, or issues by contacting us at 
+      <a href="mailto:engineeringsoftcodes@mail.com">engineeringsoftcodes@mail.com</a>.<br/>
+      We are committed to resolving issues respectfully and professionally.<br/>
+      For legal matters, we kindly ask that formal notices be delivered through the appropriate legal channels. We reserve the right to disregard any messages that appear abusive, fraudulent, or do not follow proper legal process.
+    </div>
+  </footer>
 
   <script>
     let canvas = document.getElementById('canvas');
@@ -171,10 +178,29 @@
       recorder.ondataavailable = e => chunks.push(e.data);
       recorder.onstop = () => {
         let blob = new Blob(chunks, { type: `video/${format}` });
+        let url = URL.createObjectURL(blob);
+
+        // Create link
         let a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `greenscreen_output.${format}`;
-        a.click();
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `remou_output.${format}`;
+        document.body.appendChild(a);
+
+        try {
+          a.click(); // Try download
+          document.getElementById("manualDownload").href = url;
+          document.getElementById("manualDownload").style.display = "inline-block";
+        } catch (err) {
+          alert("Download was blocked. Use the manual link.");
+          document.getElementById("manualDownload").href = url;
+          document.getElementById("manualDownload").style.display = "inline-block";
+        }
+
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+          a.remove();
+        }, 200);
       };
 
       recorder.start();
@@ -182,4 +208,4 @@
     }
   </script>
 </body>
-  </html>
+        </html>
