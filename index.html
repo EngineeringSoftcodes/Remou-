@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -104,9 +104,8 @@
       <p>Select your green screen video file:</p>
       <input type="file" id="videoUpload" accept="video/mp4,video/webm"/>
       <br/>
-      <select id="downloadFormat">
-        <option value="webm">WebM</option>
-        <option value="mp4">mp4</option>
+      <select id="downloadFormat" disabled>
+        <option value="webm" selected>WebM (Browser Supported)</option>
       </select>
       <button onclick="processVideo()">Remove Background</button>
     </div>
@@ -163,19 +162,19 @@
       recorder = new MediaRecorder(stream);
       recorder.ondataavailable = e => chunks.push(e.data);
       recorder.onstop = () => {
-        const blob = new Blob(chunks, { type: `video/${downloadFormat.value}` });
-        const url = URL.createObjectURL(blob);
+  const blob = new Blob(chunks, { type: 'video/webm' });
+  const url = URL.createObjectURL(blob);
 
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `remou_output.${downloadFormat.value}`;
-        a.click();
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `remou_output.webm`;
+  a.click();
 
-        document.getElementById("manualDownload").href = url;
-        document.getElementById("manualDownload").style.display = "inline-block";
+  document.getElementById("manualDownload").href = url;
+  document.getElementById("manualDownload").style.display = "inline-block";
 
-        setTimeout(() => URL.revokeObjectURL(url), 2000);
-      };
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+};
 
       recorder.start();
 
