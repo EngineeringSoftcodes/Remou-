@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Remou™</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: #f5f6fa;
+      color: #2f3640;
+    }
+
+    header {
+      background: #6c5ce7;
+      color: white;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: auto;
+      padding: 20px;
+    }
+
+    .uploader {
+      border: 2px dashed #6c5ce7;
+      padding: 30px;
+      text-align: center;
+      background: white;
+      border-radius: 16px;
+    }
+
+    input[type="file"], select {
+      margin: 10px;
+    }
+
+    canvas, video {
+      display: block;
+      margin: 20px auto;
+      max-width: 100%;
+      border-radius: 8px;
+    }
+
+    .download-btns {
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    .download-btns button {
+      background: #6c5ce7;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      margin: 10px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    .download-btns button:hover {
+      background: #4834d4;
+    }
+
+    footer {
+      margin-top: 60px;
+      background: #dfe6e9;
+      padding: 15px;
+      text-align: center;
+      font-size: 14px;
+      color: #636e72;
+    }
+
+    footer a {
+      color: #6c5ce7;
+      margin: 0 5px;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Remou™</h1>
+    <p>Green Screen Video Remover by Engineering Softcodes ™</p>
+  </header>
+
+  <div class="container">
+    <div class="uploader">
+      <p>Select your green screen video file:</p>
+      <input type="file" id="videoUpload" accept="video/mp4,video/webm"/>
+      <br/>
+      <select id="downloadFormat">
+        <option value="mp4">MP4</option>
+        <option value="webm">WebM</option>
+      </select>
+      <button onclick="processVideo()">Remove Background</button>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <div class="download-btns" id="downloadSection" style="display:none;">
+      <button onclick="downloadVideo()">Download Processed Video</button>
+    </div>
+  </div>
+
+  <footer>
+  Made by Engineering Softcodes ™ | <a href="mailto:engineeringsoftcodes@mail.com">engineeringsoftcodes@mail.com</a><br/>
+  <a href="#">Privacy Policy</a> •
+  <a href="#">Terms of Service</a> •
+  <a href="#">Legal</a> •
+  <a href="#">About</a>
+  <div style="font-size: 13px; color: #b2bec3;">
+  Disclaimer: Please report any bugs, complaints, or issues by contacting us at 
+  <a href="mailto:engineeringsoftcodes@mail.com">engineeringsoftcodes@mail.com</a>.<br/>
+  We are committed to resolving issues respectfully and professionally.<br/>
+  For legal matters, we kindly ask that formal notices be delivered through the appropriate legal channels. We reserve the right to disregard any messages that appear abusive, fraudulent, or do not follow proper legal process.
+</div>
+</footer>
+
+  <script>
+    let canvas = document.getElementById('canvas');
+    let ctx = canvas.getContext('2d');
+    let video = document.createElement('video');
+    let frames = [];
+
+    function processVideo() {
+      const file = document.getElementById('videoUpload').files[0];
+      if (!file) return alert("Please select a video.");
+
+      video.src = URL.createObjectURL(file);
+      video.muted = true;
+      video.play();
+
+      video.addEventListener('loadeddata', () => {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        frames = [];
+
+        const interval = setInterval(() => {
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          let frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          let data = frame.data;
+
+          for (let i = 0; i < data.length; i += 4) {
+            let r = data[i], g = data[i + 1], b = data[i + 2];
+            if (g > 100 && r < 100 && b < 100) {
+              data[i + 3] = 0;
+            }
+          }
+
+          ctx.putImageData(frame, 0, 0);
+          frames.push(canvas.toDataURL());
+
+          if (video.currentTime >= video.duration) {
+            clearInterval(interval);
+            document.getElementById('downloadSection').style.display = 'block';
+          }
+        }, 100);
+      });
+    }
+
+    function downloadVideo() {
+      let format = document.getElementById("downloadFormat").value;
+      let stream = canvas.captureStream(30);
+      let recorder = new MediaRecorder(stream);
+      let chunks = [];
+
+      recorder.ondataavailable = e => chunks.push(e.data);
+      recorder.onstop = () => {
+        let blob = new Blob(chunks, { type: `video/${format}` });
+        let a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `greenscreen_output.${format}`;
+        a.click();
+      };
+
+      recorder.start();
+      setTimeout(() => recorder.stop(), 2000 + frames.length * 100);
+    }
+  </script>
+</body>
+  </html>
