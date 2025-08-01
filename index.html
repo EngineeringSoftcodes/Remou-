@@ -37,7 +37,7 @@
       margin: 10px;
     }
 
-    canvas, video {
+    canvas {
       display: block;
       margin: 20px auto;
       max-width: 100%;
@@ -70,6 +70,12 @@
       font-size: 14px;
     }
 
+    #status {
+      text-align: center;
+      margin: 15px;
+      font-size: 16px;
+    }
+
     footer {
       margin-top: 60px;
       background: #dfe6e9;
@@ -99,12 +105,12 @@
       <input type="file" id="videoUpload" accept="video/mp4,video/webm"/>
       <br/>
       <select id="downloadFormat">
-        <option value="mp4">MP4</option>
-        <option value="webm">WebM</option>
+        <option value="webm">WebM (Recommended)</option>
       </select>
       <button onclick="processVideo()">Remove Background</button>
     </div>
 
+    <div id="status"></div>
     <canvas id="canvas"></canvas>
 
     <div class="download-btns" id="downloadSection" style="display:none;">
@@ -128,25 +134,38 @@
   </footer>
 
   <script>
-    let canvas = document.getElementById('canvas');
-    let ctx = canvas.getContext('2d');
-    let video = document.createElement('video');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const video = document.createElement('video');
     let frames = [];
+    let recorder;
+    let stream;
+    let chunks = [];
 
     function processVideo() {
       const file = document.getElementById('videoUpload').files[0];
+      const status = document.getElementById("status");
       if (!file) return alert("Please select a video.");
+      frames = [];
+      chunks = [];
 
       video.src = URL.createObjectURL(file);
       video.muted = true;
+      video.crossOrigin = "anonymous";
       video.play();
+
+      status.innerText = "⏳ Processing video, please wait...";
 
       video.addEventListener('loadeddata', () => {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
-        frames = [];
 
-        const interval = setInterval(() => {
+        const draw = () => {
+          if (video.paused || video.ended) {
+            finishProcessing();
+            return;
+          }
+
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
           let frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
           let data = frame.data;
@@ -159,53 +178,49 @@
           }
 
           ctx.putImageData(frame, 0, 0);
-          frames.push(canvas.toDataURL());
+          requestAnimationFrame(draw);
+        };
 
-          if (video.currentTime >= video.duration) {
-            clearInterval(interval);
-            document.getElementById('downloadSection').style.display = 'block';
-          }
-        }, 100);
+        video.play();
+        draw();
       });
     }
 
+    function finishProcessing() {
+      document.getElementById("status").innerText = "✅ Done! Ready to download.";
+      document.getElementById('downloadSection').style.display = 'block';
+    }
+
     function downloadVideo() {
-      let format = document.getElementById("downloadFormat").value;
-      let stream = canvas.captureStream(30);
-      let recorder = new MediaRecorder(stream);
-      let chunks = [];
+      const format = document.getElementById("downloadFormat").value;
+      stream = canvas.captureStream(30);
+      recorder = new MediaRecorder(stream);
+      chunks = [];
 
       recorder.ondataavailable = e => chunks.push(e.data);
       recorder.onstop = () => {
-        let blob = new Blob(chunks, { type: `video/${format}` });
-        let url = URL.createObjectURL(blob);
+        const blob = new Blob(chunks, { type: `video/${format}` });
+        const url = URL.createObjectURL(blob);
 
-        // Create link
-        let a = document.createElement('a');
+        const a = document.createElement('a');
         a.style.display = 'none';
         a.href = url;
         a.download = `remou_output.${format}`;
         document.body.appendChild(a);
 
-        try {
-          a.click(); // Try download
-          document.getElementById("manualDownload").href = url;
-          document.getElementById("manualDownload").style.display = "inline-block";
-        } catch (err) {
-          alert("Download was blocked. Use the manual link.");
-          document.getElementById("manualDownload").href = url;
-          document.getElementById("manualDownload").style.display = "inline-block";
-        }
+        a.click();
+        document.getElementById("manualDownload").href = url;
+        document.getElementById("manualDownload").style.display = "inline-block";
 
         setTimeout(() => {
           URL.revokeObjectURL(url);
           a.remove();
-        }, 200);
+        }, 2000);
       };
 
       recorder.start();
-      setTimeout(() => recorder.stop(), 2000 + frames.length * 100);
+      setTimeout(() => recorder.stop(), 5000); // capture 5 seconds
     }
   </script>
 </body>
-        </html>
+  </html>
