@@ -10,6 +10,12 @@
       font-family: 'Segoe UI', sans-serif;
       background: #f5f6fa;
       color: #2f3640;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    body.dark-mode {
+      background: #2f3640;
+      color: #f5f6fa;
     }
 
     header {
@@ -33,11 +39,11 @@
       border-radius: 16px;
     }
 
-    input[type="file"], select {
+    input[type="file"], select, input[type="range"] {
       margin: 10px;
     }
 
-    canvas {
+    video, canvas {
       display: block;
       margin: 20px auto;
       max-width: 100%;
@@ -64,10 +70,15 @@
       background: #4834d4;
     }
 
-    #manualDownload {
-      display: none;
-      margin-top: 10px;
-      font-size: 14px;
+    .switch-theme {
+      float: right;
+      background: transparent;
+      border: none;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: -40px;
+      margin-right: 20px;
     }
 
     #status {
@@ -76,19 +87,10 @@
       font-size: 16px;
     }
 
-    footer {
-      margin-top: 60px;
-      background: #dfe6e9;
-      padding: 15px;
-      text-align: center;
+    #manualDownload {
+      display: none;
+      margin-top: 10px;
       font-size: 14px;
-      color: #636e72;
-    }
-
-    footer a {
-      color: #6c5ce7;
-      margin: 0 5px;
-      text-decoration: none;
     }
   </style>
 </head>
@@ -101,80 +103,100 @@
 
 <div class="container">
   <div class="uploader">
-    <p>Select your green screen video file:</p>
-    <input type="file" id="videoUpload" accept="video/mp4,video/webm"/>
+    <p>Upload green screen video:</p>
+    <input type="file" id="videoUpload" accept="video/*" />
+    <p>Optional: Upload background image</p>
+    <input type="file" id="bgUpload" accept="image/*" />
     <br/>
-    <select id="downloadFormat" disabled>
-      <option value="webm" selected>WebM (Browser Supported)</option>
+    <label>Green Sensitivity: <span id="sensitivityValue">100</span></label>
+    <input type="range" id="sensitivity" min="50" max="200" value="100" />
+    <br/>
+    <select id="downloadFormat">
+      <option value="webm" selected>WebM</option>
+      <option value="mp4">MP4 (Simulated*)</option>
     </select>
+    <br/>
     <button onclick="processVideo()">Remove Background</button>
   </div>
 
-  <div id="status"></div>
+  <video id="videoPreview" controls style="display:none;"></video>
   <canvas id="canvas"></canvas>
 
   <div class="download-btns" id="downloadSection" style="display:none;">
-    <button onclick="downloadVideo()">Download Processed Video</button>
-    <a id="manualDownload" href="#" download>Click here if download doesn't start</a>
+    <button onclick="downloadVideo()">Download</button>
+    <a id="manualDownload" href="#" download>Manual Download</a>
   </div>
+
+  <div id="status"></div>
 </div>
 
-<footer>
-  Made by Engineering Softcodes ™ | <a href="mailto:engineeringsoftcodes@mail.com">engineeringsoftcodes@mail.com</a><br/>
-  <a href="#">Privacy Policy</a> •
-  <a href="#">Terms of Service</a> •
-  <a href="#">Legal</a> •
-  <a href="#">About</a>
-  <div style="font-size: 13px; color: #b2bec3;">
-    Disclaimer: Please report any bugs, complaints, or issues by contacting us.<br/>
-    For legal matters, we ask that formal notices be delivered via appropriate channels.
-  </div>
+<footer style="text-align:center; margin-top: 40px; padding: 15px; background: #dfe6e9;">
+  Made by Engineering Softcodes™ | <a href="mailto:engineeringsoftcodes@mail.com">Contact Us</a><br/>
+  <a href="#">Privacy Policy</a> • <a href="#">Terms</a> • <a href="#">About</a>
 </footer>
 
 <script>
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
-const video = document.createElement('video');
-const downloadFormat = document.getElementById('downloadFormat');
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+const video = document.getElementById("videoPreview");
+const bgUpload = document.getElementById("bgUpload");
+const sensitivity = document.getElementById("sensitivity");
+const sensitivityValue = document.getElementById("sensitivityValue");
+const formatSelect = document.getElementById("downloadFormat");
+const status = document.getElementById("status");
 let stream, recorder, chunks = [];
+let backgroundImage = null;
+
+sensitivity.oninput = () => {
+  sensitivityValue.innerText = sensitivity.value;
+};
+
+function toggleTheme() {
+  document.body.classList.toggle("dark-mode");
+}
+
+bgUpload.addEventListener("change", () => {
+  const file = bgUpload.files[0];
+  if (!file) return;
+  const img = new Image();
+  img.onload = () => backgroundImage = img;
+  img.src = URL.createObjectURL(file);
+});
 
 function processVideo() {
-  const file = document.getElementById('videoUpload').files[0];
-  const status = document.getElementById("status");
+  const file = document.getElementById("videoUpload").files[0];
+  if (!file) return alert("Please upload a video!");
 
-  if (!file) return alert("Please select a video.");
-
-  chunks = [];
   video.src = URL.createObjectURL(file);
   video.crossOrigin = "anonymous";
   video.muted = true;
   video.load();
 
-  status.innerText = "⏳ Preparing video...";
-
   video.onloadedmetadata = () => {
+    video.style.display = "block";
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
 
     stream = canvas.captureStream(30);
+    chunks = [];
+
     recorder = new MediaRecorder(stream);
     recorder.ondataavailable = e => chunks.push(e.data);
     recorder.onstop = () => {
-      const blob = new Blob(chunks, { type: 'video/webm' });
+      const type = formatSelect.value === "mp4" ? "video/webm" : "video/webm"; // MP4 simulated
+      const blob = new Blob(chunks, { type });
       const url = URL.createObjectURL(blob);
 
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      a.download = 'remou_output.webm';
+      a.download = `remou_output.${formatSelect.value}`;
       a.click();
 
       document.getElementById("manualDownload").href = url;
       document.getElementById("manualDownload").style.display = "inline-block";
-
-      setTimeout(() => URL.revokeObjectURL(url), 2000);
     };
 
-    status.innerText = "⏳ Removing green screen and recording...";
+    status.innerText = "⏳ Removing background...";
     recorder.start();
     video.play();
     drawFrame();
@@ -184,19 +206,25 @@ function processVideo() {
 function drawFrame() {
   if (video.paused || video.ended) {
     recorder.stop();
-    document.getElementById("status").innerText = "✅ Done! Ready to download.";
-    document.getElementById('downloadSection').style.display = 'block';
+    document.getElementById("downloadSection").style.display = "block";
+    status.innerText = "✅ Done!";
     return;
   }
 
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
   let frame = ctx.getImageData(0, 0, canvas.width, canvas.height);
   let data = frame.data;
+  const sens = parseInt(sensitivity.value);
 
   for (let i = 0; i < data.length; i += 4) {
     let r = data[i], g = data[i + 1], b = data[i + 2];
-    if (g > 100 && r < 100 && b < 100) {
-      data[i + 3] = 0; // Transparent
+    if (g > sens && r < sens / 2 && b < sens / 2) {
+      if (backgroundImage) {
+        let x = (i / 4) % canvas.width;
+        let y = Math.floor(i / 4 / canvas.width);
+        ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
+      }
+      data[i + 3] = 0;
     }
   }
 
@@ -205,8 +233,8 @@ function drawFrame() {
 }
 
 function downloadVideo() {
-  // Optional manual trigger
+  // Handled by recorder.onstop
 }
 </script>
 </body>
-     </html>
+  </html>
