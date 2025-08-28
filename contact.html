@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Remou™ - Contact</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --bg:#0b1220;
+  --panel:#0f1720;
+  --card:rgba(255,255,255,0.03);
+  --primary:#0A84FF;
+  --accent:#34C759;
+  --muted:#9CA3AF;
+  --radius:12px
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,'Segoe UI',Roboto,Arial;background:linear-gradient(180deg,var(--bg),#071021);color:#fff}
+.header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 24px}
+.brand{display:flex;gap:12px;align-items:center}
+.logo{width:48px;height:48px;border-radius:10px;background:linear-gradient(135deg,var(--primary),#6ea8ff);display:flex;align-items:center;justify-content:center;font-weight:800}
+.nav{display:flex;gap:12px}
+.nav a{color:var(--muted);text-decoration:none;font-weight:600}
+.nav a:hover{color:var(--primary)}
+.main{max-width:1200px;margin:24px auto;padding:12px;display:flex;flex-direction:column;align-items:center;gap:24px}
+.panel{background:var(--card);padding:24px;border-radius:var(--radius);border:1px solid rgba(255,255,255,0.03);backdrop-filter:blur(6px);width:100%;max-width:600px;text-align:center}
+.section{margin-bottom:24px}
+.section h2{margin-bottom:18px;color:var(--primary)}
+.btn{display:flex;align-items:center;justify-content:center;gap:6px;background:var(--primary);color:#fff;padding:14px;border-radius:12px;border:0;font-weight:700;cursor:pointer;margin-bottom:12px;text-decoration:none;font-size:1rem;width:160px;height:80px}
+.btn img{width:32px;height:32px}
+.web-btn{background:var(--accent);width:auto;padding:12px 24px;font-size:1rem}
+.footer{margin-top:36px;text-align:center;color:var(--muted);font-size:0.9rem;display:flex;flex-direction:column;gap:6px}
+.footer a{color:var(--muted);text-decoration:none;font-weight:600}
+.footer a:hover{color:var(--primary)}
+@media(max-width:700px){.btn{width:100%;height:60px}}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="brand">
+    <div class="logo">R</div>
+    <div>Remou™</div>
+  </div>
+  <div class="nav">
+    <a href="index.html">Home</a>
+    <a href="support-us.html">Support Us</a>
+  </div>
+</div>
+
+<!-- Main -->
+<div class="main">
+  <div class="panel">
+    <h2>Contact Us</h2>
+    <p>If you’re having issues, bugs, or questions, reach out to us below:</p>
+
+    <form action="https://submit-form.com/DHm7QtG9T" method="POST" style="display:flex;flex-direction:column;gap:12px;text-align:left">
+      <label>Your Name</label>
+      <input type="text" name="name" required style="padding:10px;border-radius:8px;border:none"/>
+
+      <label>Your Email</label>
+      <input type="email" name="email" required style="padding:10px;border-radius:8px;border:none"/>
+
+      <label>Category</label>
+      <select name="category" style="padding:10px;border-radius:8px;border:none">
+        <option>Bug Report</option>
+        <option>Issue</option>
+        <option>Feature Request</option>
+        <option>General Question</option>
+      </select>
+
+      <label>Message</label>
+      <textarea name="message" rows="5" required style="padding:10px;border-radius:8px;border:none"></textarea>
+
+      <button type="submit" class="btn web-btn">Send</button>
+    </form>
+  </div>
+</div>
+
+<!-- Footer -->
+<div class="footer">
+  <div>All rights reserved. Made, Owned & Trademarked by <strong>Engineering Softcodes ™</strong></div>
+  <div>
+    <a href="contact.html">Contact</a> • 
+    <a href="terms-of-service.html">Terms Of Service</a> • 
+    <a href="policy-privacy.html">Policy Privacy</a> • 
+    <a href="legal.html">Legal</a> • 
+    <a href="support-us.html">Support Us</a>
+  </div>
+</div>
+
+</body>
+</html>
