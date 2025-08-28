@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Remou™</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
+<style>
+:root{--bg:#0b1220;--panel:#0f1720;--card:rgba(255,255,255,0.03);--primary:#0A84FF;--accent:#34C759;--muted:#9CA3AF;--radius:12px}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,'Segoe UI',Roboto,Arial;background:linear-gradient(180deg,var(--bg),#071021);color:#fff}
+.app{max-width:1200px;margin:18px auto;padding:18px;display:grid;grid-template-columns:360px 1fr;gap:18px}
+.header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;gap:12px;align-items:center}
+.logo{width:48px;height:48px;border-radius:10px;background:linear-gradient(135deg,var(--primary),#6ea8ff);display:flex;align-items:center;justify-content:center;font-weight:800}
+.h1{font-size:1.15rem;font-weight:700}
+.panel{background:var(--card);padding:14px;border-radius:var(--radius);border:1px solid rgba(255,255,255,0.03);backdrop-filter:blur(6px)}
+.section{margin-bottom:12px}
+.label{font-weight:700;margin-bottom:6px;display:block;color:var(--muted)}
+.input,select,button,input[type=range],input[type=color],input[type=number]{width:100%;padding:10px;border-radius:10px;border:0;background:rgba(255,255,255,0.02);color:#fff;font-size:0.95rem}
+.btn{background:var(--primary);color:#fff;padding:10px;border-radius:10px;border:0;font-weight:700;cursor:pointer}
+.btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.04)}
+.canvas-wrap{background:#000;border-radius:12px;border:2px solid rgba(255,255,255,0.04);overflow:hidden}
+.canvas-top{display:flex;justify-content:space-between;padding:10px;color:var(--muted);align-items:center}
+.canvas-area{padding:12px}
+canvas{width:100%;height:auto;display:block;background:#000}
+.progress{height:10px;background:rgba(255,255,255,0.03);border-radius:8px;overflow:hidden}
+.progress > div{height:100%;width:0;background:linear-gradient(90deg,var(--primary),#6fb0ff)}
+.footer{margin-top:12px;text-align:center;color:var(--muted);font-size:0.9rem}
+.small{font-size:0.9rem;color:var(--muted)}
+@media(max-width:980px){.app{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div style="max-width:1400px;margin:8px auto;padding:8px">
+  <div class="header">
+    <div class="brand">
+      <div class="logo">R</div>
+      <div>
+        <div class="h1">Remou™</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button id="minimizeBtn" class="btn ghost">Minimize</button>
+      <button id="closeBtn" class="btn ghost">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="app">
+  <!-- left: controls -->
+  <div class="panel">
+    <div class="section">
+      <label class="label">Source</label>
+      <div style="display:flex;gap:8px">
+        <label class="btn ghost" style="flex:1">Choose file <input id="upload" type="file" accept="video/*,image/*" style="display:none"></label>
+        <button id="pasteBtn" class="btn ghost">Paste</button>
+      </div>
+      <div class="small" style="margin-top:8px">Drag & drop into preview or use Choose. App supports large files & native encoders.</div>
+    </div>
+
+    <div class="section">
+      <label class="label">Mode</label>
+      <select id="mode" class="input">
+        <option value="chroma">Chroma Key (pick color)</option>
+        <option value="person">AI Person (MediaPipe)</option>
+      </select>
+      <div id="chromaGroup" style="margin-top:10px">
+        <label class="label">Pick color</label>
+        <input id="colorRemove" type="color" value="#00ff00"/>
+        <label class="label">Threshold</label>
+        <input id="threshold" type="range" min="10" max="255" value="140"/>
+        <label class="label">De-spill</label>
+        <input id="despill" type="range" min="0" max="100" value="25"/>
+        <label class="label">Edge feather (px)</label>
+        <input id="feather" type="range" min="0" max="12" value="2"/>
+      </div>
+      <div id="aiNote" class="small" style="display:none;margin-top:8px">AI Person uses on-device segmentation (no upload).</div>
+    </div>
+
+    <div class="section">
+      <label class="label">Strength & Background</label>
+      <select id="strength" class="input"><option value="soft">Soft</option><option value="medium" selected>Medium</option><option value="hard">Hard</option></select>
+      <label class="label" style="margin-top:8px">Background</label>
+      <select id="bgSelect" class="input"><option value="none">None (transparent)</option><option value="image">Image</option><option value="video">Video</option></select>
+      <label class="btn ghost" style="margin-top:8px">Upload background <input id="bgUpload" type="file" accept="image/*,video/*" style="display:none"></label>
+    </div>
+
+    <div class="section">
+      <label class="label">FPS & Quality</label>
+      <div style="display:flex;gap:8px">
+        <input id="fps" type="number" min="1" max="500" value="60" style="width:100px" />
+        <select id="quality" class="input" style="flex:1">
+          <option value="144">144p</option><option value="240">240p</option><option value="360">360p</option>
+          <option value="480">480p</option><option value="720" selected>720p</option><option value="1080">1080p</option>
+          <option value="2160">2160p (4K)</option><option value="4320">4320p (8K)</option><option value="custom">Custom</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <input id="outW" type="number" placeholder="Width" value="1280" />
+        <input id="outH" type="number" placeholder="Height" value="720" />
+      </div>
+    </div>
+
+    <div class="section">
+      <label class="label">Export</label>
+      <select id="format" class="input"><option value="webm">WEBM (fast)</option><option value="mp4">MP4</option><option value="gif">GIF</option><option value="png">PNG</option><option value="jpg">JPG</option></select>
+      <label class="label">Quality</label>
+      <select id="crf" class="input"><option value="28">Smaller</option><option value="23" selected>Balanced</option><option value="18">High</option></select>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:6px">
+      <button id="startBtn" class="btn">Start</button>
+      <button id="downloadBtn" class="btn" style="background:var(--accent)">Download</button>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button id="snapshotBtn" class="btn ghost">Snapshot</button>
+      <button id="undoBtn" class="btn ghost">Undo</button>
+      <button id="redoBtn" class="btn ghost">Redo</button>
+      <button id="resetBtn" class="btn ghost">Reset</button>
+    </div>
+
+    <div class="footer">
+    <div>All rights reserved. Made, Owned & Trademarked by <strong>Engineering Softcodes ™</strong></div>
+      <div>
+        <a href="contact.html">Contact</a> • 
+        <a href="terms-of-service.html">Terms Of Service</a> • 
+        <a href="policy-privacy.html">Policy Privacy</a> • 
+        <a href="legal.html">Legal</a> • 
+        <a href="support-us.html">Support Us</a>
+      </div>
+    </div>
+
+  <!-- right: preview -->
+  <div>
+    <div class="panel canvas-wrap">
+      <div class="canvas-top">
+        <div><strong>Preview</strong> <span class="small">— live</span></div>
+        <div class="small">Progress: <span id="progText">0%</span></div>
+      </div>
+      <div class="canvas-area">
+        <div id="dropArea" style="border:2px dashed rgba(255,255,255,0.04);padding:12px;border-radius:8px;text-align:center;">Drop files here</div>
+        <canvas id="canvas"></canvas>
+        <div class="progress" style="margin-top:8px"><div id="progressInner" style="width:0%"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const progressInner = document.getElementById('progressInner');
+const progText = document.getElementById('progText');
+const upload = document.getElementById('upload');
+const bgUpload = document.getElementById('bgUpload');
+const startBtn = document.getElementById('startBtn');
+const downloadBtn = document.getElementById('downloadBtn');
+const snapshotBtn = document.getElementById('snapshotBtn');
+const undoBtn = document.getElementById('undoBtn');
+const redoBtn = document.getElementById('redoBtn');
+const resetBtn = document.getElementById('resetBtn');
+const modeSel = document.getElementById('mode');
+const chromaGroup = document.getElementById('chromaGroup');
+const aiNote = document.getElementById('aiNote');
+
+let srcVideo = null, srcImage = null, bgVideo = null, bgImage = null;
+let recordedChunks = [], mediaRecorder = null;
+let undoStack = [], redoStack = [];
+let selfieSeg = null, useAIMode = false;
+const { createFFmpeg, fetchFile } = FFmpeg;
+const ffmpeg = createFFmpeg({ log: false });
+let ffmpegLoaded = false;
+
+function setProgress(p){ progressInner.style.width = p+"%"; progText.textContent = p+"%"; }
+function pushUndo(){ try{ undoStack.push(ctx.getImageData(0,0,canvas.width,canvas.height)); if(undoStack.length>40) undoStack.shift(); }catch(e){} }
+function undo(){ if(undoStack.length){ redoStack.push(ctx.getImageData(0,0,canvas.width,canvas.height)); ctx.putImageData(undoStack.pop(),0,0); } }
+function redo(){ if(redoStack.length){ undoStack.push(ctx.getImageData(0,0,canvas.width,canvas.height)); ctx.putImageData(redoStack.pop(),0,0); } }
+function resetAll(){ try{ mediaRecorder && mediaRecorder.state==='recording' && mediaRecorder.stop(); }catch(e){} ctx.clearRect(0,0,canvas.width,canvas.height); recordedChunks=[]; srcVideo=null; srcImage=null; bgVideo=null; bgImage=null; undoStack=[]; redoStack=[]; setProgress(0); }
+
+modeSel.addEventListener('change', ()=>{ useAIMode = modeSel.value === 'person'; chromaGroup.style.display = useAIMode ? 'none' : ''; aiNote.style.display = useAIMode ? '' : 'none'; });
+
+const dropArea = document.getElementById('dropArea');
+['dragenter','dragover'].forEach(e=>dropArea.addEventListener(e, ev=>{ ev.preventDefault(); dropArea.style.borderColor = 'rgba(255,255,255,0.18)'; }));
+['dragleave','drop'].forEach(e=>dropArea.addEventListener(e, ev=>{ ev.preventDefault(); dropArea.style.borderColor = 'rgba(255,255,255,0.04)'; }));
+dropArea.addEventListener('drop', ev=>{ const f = ev.dataTransfer.files[0]; if(f) loadSourceFile(f); });
+upload.addEventListener('change', ()=>{ if(upload.files[0]) loadSourceFile(upload.files[0]); });
+bgUpload.addEventListener('change', ()=>{ if(bgUpload.files[0]) loadBgFile(bgUpload.files[0]); });
+
+function loadBgFile(file){
+  if(file.type.startsWith('image')){ bgImage = new Image(); bgImage.src = URL.createObjectURL(file); bgImage.onload = ()=> setProgress(0); }
+  else if(file.type.startsWith('video')){ bgVideo = document.createElement('video'); bgVideo.src = URL.createObjectURL(file); bgVideo.loop = true; bgVideo.muted = true; bgVideo.play().catch(()=>{}); }
+}
+
+function loadSourceFile(file){
+  if(file.type.startsWith('image')){
+    srcImage = new Image();
+    srcImage.onload = ()=>{ const t = computeSize(srcImage.width, srcImage.height); canvas.width=t.w; canvas.height=t.h; ctx.drawImage(srcImage,0,0,t.w,t.h); pushUndo(); setProgress(0); };
+    srcImage.src = URL.createObjectURL(file);
+  } else if(file.type.startsWith('video')){
+    if(srcVideo){ srcVideo.pause(); srcVideo=null; }
+    srcVideo = document.createElement('video');
+    srcVideo.src = URL.createObjectURL(file);
+    srcVideo.muted = true;
+    srcVideo.onloadeddata = ()=>{ const t = computeSize(srcVideo.videoWidth, srcVideo.videoHeight); canvas.width=t.w; canvas.height=t.h; setProgress(0); };
+    srcVideo.play().catch(()=>{});
+  }
+}
+
+function computeSize(sw, sh){
+  const q = document.getElementById('quality').value;
+  let h = parseInt(document.getElementById('outH').value)||sh;
+  let w = parseInt(document.getElementById('outW').value)||sw;
+  if(q!=='custom'){ const map={144:144,240:240,360:360,480:480,720:720,1080:1080,2160:2160,4320:4320}; const th = map[q]||720; const aspect = sw/sh; h=th; w=Math.max(64, Math.round(h*aspect)); }
+  w = w - (w%2); h = h - (h%2);
+  return {w:Math.max(64,w),h:Math.max(64,h)};
+}
+
+async function applyChromaKey(removeColor, threshold, despill, feather, strength){
+  const w = canvas.width, h = canvas.height;
+  const imgData = ctx.getImageData(0,0,w,h);
+  const d = imgData.data;
+  const factor = strength==='soft'?0.6:strength==='medium'?0.85:1.0;
+  for(let i=0;i<d.length;i+=4){
+    const r=d[i], g=d[i+1], b=d[i+2];
+    const dist = Math.hypot(r-removeColor.r, g-removeColor.g, b-removeColor.b);
+    if(dist<threshold){
+      const ratio = Math.max(0,Math.min(1,dist/threshold));
+      const alphaMul = ratio + (1-factor)*(1-ratio);
+      d[i+3] = Math.round(d[i+3]*alphaMul);
+      const avg = Math.round((r+g+b)/3);
+      d[i] = Math.round(d[i] - (d[i]-avg)*(despill/100));
+      d[i+1] = Math.round(d[i+1] - (d[i+1]-avg)*(despill/100));
+      d[i+2] = Math.round(d[i+2] - (d[i+2]-avg)*(despill/100));
+    }
+  }
+  ctx.putImageData(imgData,0,0);
+  if(feather>0){ const tmp=document.createElement('canvas'); tmp.width=w; tmp.height=h; const tctx=tmp.getContext('2d'); tctx.drawImage(canvas,0,0); ctx.clearRect(0,0,w,h); ctx.filter=`blur(${feather}px)`; ctx.drawImage(tmp,0,0); ctx.filter='none'; }
+  pushUndo();
+}
+
+async function ensureSelfieSeg(){ if(selfieSeg) return selfieSeg; selfieSeg = new SelfieSegmentation.SelfieSegmentation({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${f}` }); selfieSeg.setOptions({ modelSelection:1 }); await selfieSeg.initialize(); return selfieSeg; }
+
+async function applyAIMaskOnce(){
+  await ensureSelfieSeg();
+  return new Promise(resolve=>{
+    selfieSeg.onResults(res=>{
+      const mask = document.createElement('canvas'); mask.width=canvas.width; mask.height=canvas.height;
+      const mctx = mask.getContext('2d');
+      mctx.drawImage(res.segmentationMask,0,0,mask.width,mask.height);
+      ctx.save(); ctx.globalCompositeOperation='destination-in'; ctx.drawImage(mask,0,0); ctx.restore();
+      pushUndo(); resolve();
+    });
+    const tmp = document.createElement('canvas'); tmp.width=canvas.width; tmp.height=canvas.height;
+    tmp.getContext('2d').drawImage(canvas,0,0);
+    selfieSeg.send({ image: tmp });
+  });
+}
+
+async function processVideo(){
+  if(!srcVideo) return;
+  const fps = clamp(parseInt(document.getElementById('fps').value||60,10),1,500);
+  recordedChunks=[];
+  const target = computeSize(srcVideo.videoWidth, srcVideo.videoHeight);
+  canvas.width=target.w; canvas.height=target.h;
+  const stream = canvas.captureStream(fps);
+  try{ mediaRecorder = new MediaRecorder(stream,{ mimeType:'video/webm;codecs=vp8,opus' }); }catch(e){ mediaRecorder = new MediaRecorder(stream); }
+  mediaRecorder.ondataavailable = e=>{ if(e.data && e.data.size) recordedChunks.push(e.data); };
+  mediaRecorder.start(700);
+  srcVideo.play().catch(()=>{});
+  const removeColor = hexToRgb(document.getElementById('colorRemove').value);
+  const threshold = parseInt(document.getElementById('threshold').value||140,10);
+  const despill = parseInt(document.getElementById('despill').value||25,10);
+  const feather = parseInt(document.getElementById('feather').value||2,10);
+  const strength = document.getElementById('strength').value;
+
+  async function frame(){
+    if(srcVideo.paused || srcVideo.ended){ mediaRecorder && mediaRecorder.state==='recording' && mediaRecorder.stop(); setProgress(100); return; }
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    if(document.getElementById('bgSelect').value==='image' && bgImage) ctx.drawImage(bgImage,0,0,canvas.width,canvas.height);
+    if(document.getElementById('bgSelect').value==='video' && bgVideo) ctx.drawImage(bgVideo,0,0,canvas.width,canvas.height);
+    ctx.drawImage(srcVideo,0,0,canvas.width,canvas.height);
+    if(useAIMode){ await applyAIMaskOnce(); } else { await applyChromaKey(removeColor,threshold,despill,feather,strength); }
+    const pct = Math.round((srcVideo.currentTime/srcVideo.duration)*100);
+    setProgress(pct);
+    requestAnimationFrame(frame);
+  }
+  frame();
+}
+
+async function processImage(){
+  if(!srcImage) return;
+  const targ = computeSize(srcImage.width, srcImage.height);
+  canvas.width=targ.w; canvas.height=targ.h;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  if(document.getElementById('bgSelect').value==='image' && bgImage) ctx.drawImage(bgImage,0,0,canvas.width,canvas.height);
+  if(document.getElementById('bgSelect').value==='video' && bgVideo) ctx.drawImage(bgVideo,0,0,canvas.width,canvas.height);
+  ctx.drawImage(srcImage,0,0,canvas.width,canvas.height);
+  if(useAIMode){ await applyAIMaskOnce(); } else { const removeColor = hexToRgb(document.getElementById('colorRemove').value); const threshold = parseInt(document.getElementById('threshold').value||140,10); const despill = parseInt(document.getElementById('despill').value||25,10); const feather = parseInt(document.getElementById('feather').value||2,10); const strength = document.getElementById('strength').value; await applyChromaKey(removeColor,threshold,despill,feather,strength); }
+  setProgress(100);
+}
+
+function hexToRgb(hex){ const v=parseInt(hex.replace('#',''),16); return {r:(v>>16)&255,g:(v>>8)&255,b:v&255}; }
+function clamp(v,a,b){ return Math.min(b,Math.max(a,v)); }
+
+startBtn.addEventListener('click',()=>{
+  if(!upload.files[0]) return alert('Choose a source file first');
+  useAIMode = (modeSel.value==='person');
+  const f = upload.files[0];
+  if(f.type.startsWith('image')){ srcImage = new Image(); srcImage.src = URL.createObjectURL(f); srcImage.onload=()=>processImage(); }
+  else{ srcVideo = document.createElement('video'); srcVideo.src = URL.createObjectURL(f); srcVideo.muted=true; srcVideo.onloadeddata=()=>processVideo(); srcVideo.play().catch(()=>{}); }
+});
+
+downloadBtn.addEventListener('click', async()=>{
+  const fmt = document.getElementById('format').value;
+  if(fmt==='png' || fmt==='jpg'){ const mime=fmt==='png'?'image/png':'image/jpeg'; const url=canvas.toDataURL(mime,0.92); const a=document.createElement('a'); a.href=url; a.download=`remou_snapshot.${fmt}`; a.click(); return; }
+  if(recordedChunks.length===0) return alert('No recorded video yet');
+  if(fmt==='webm'){ const blob=new Blob(recordedChunks,{type:'video/webm'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='remou_output.webm'; a.click(); return; }
+  if(!ffmpegLoaded){ await ffmpeg.load(); ffmpegLoaded=true; }
+  const blob=new Blob(recordedChunks,{type:'video/webm'}); const arr=new Uint8Array(await blob.arrayBuffer()); ffmpeg.FS('writeFile','in.webm',arr);
+  const crf=document.getElementById('crf').value||'23';
+  try{ await ffmpeg.run('-i','in.webm','-c:v','libx264','-preset','fast','-crf',crf,'-movflags','faststart','out.mp4'); const out=ffmpeg.FS('readFile','out.mp4'); const mp4blob=new Blob([out.buffer],{type:'video/mp4'}); const url=URL.createObjectURL(mp4blob); const a=document.createElement('a'); a.href=url; a.download='remou_output.mp4'; a.click(); }catch(e){ console.error(e); alert('Transcode failed'); }
+});
+
+snapshotBtn.addEventListener('click',()=>{
+  const fmt=document.getElementById('format').value;
+  if(fmt!=='png' && fmt!=='jpg'){ alert('Set export to PNG/JPG'); return; }
+  const mime=fmt==='png'?'image/png':'image/jpeg';
+  const url=canvas.toDataURL(mime,0.92); const a=document.createElement('a'); a.href=url; a.download=`remou_snapshot.${fmt}`; a.click();
+});
+</script>
+</body>
+</html>

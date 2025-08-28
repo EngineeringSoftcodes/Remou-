@@ -1,0 +1,605 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Remou™ — Web Version</title>
+
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet"/>
+
+<!-- FFmpeg & MediaPipe -->
+<script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.0/dist/ffmpeg.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js"></script>
+
+<style>
+:root{
+  --bg-dark-1: #0f1720;
+  --bg-dark-2: #0b1220;
+  --panel: rgba(255,255,255,0.04);
+  --primary: #0A84FF;
+  --accent: #34C759;
+  --muted: #9CA3AF;
+  --glass: rgba(255,255,255,0.04);
+  --radius: 14px;
+  --font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:var(--font);background:linear-gradient(135deg,var(--bg-dark-1),var(--bg-dark-2));color:#fff;-webkit-font-smoothing:antialiased}
+.container{max-width:1120px;margin:18px auto;padding:16px;display:grid;grid-template-columns:360px 1fr;gap:18px}
+@media(max-width:980px){.container{grid-template-columns:1fr;padding:10px}}
+.header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+.brand{display:flex;gap:12px;align-items:center}
+.logo{width:46px;height:46px;border-radius:10px;background:linear-gradient(135deg,var(--primary),#5b8dff);display:flex;align-items:center;justify-content:center;font-weight:800}
+.title{font-size:1.15rem;font-weight:700}
+.controls-panel{background:var(--panel);padding:14px;border-radius:var(--radius);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.03)}
+.section{margin-bottom:12px}
+.section h3{margin:0 0 8px 0;font-size:0.95rem}
+.input,select,button,input[type=range],input[type=color],input[type=number]{width:100%;padding:10px;border-radius:10px;border:0;background:rgba(255,255,255,0.03);color:#fff;font-size:0.95rem}
+.row{display:flex;gap:8px}
+.row > *{flex:1}
+.small{padding:8px;font-size:0.9rem}
+.btn{background:var(--primary);color:#fff;padding:10px;border-radius:10px;border:0;font-weight:700;cursor:pointer}
+.btn.secondary{background:transparent;border:1px solid rgba(255,255,255,0.06);font-weight:600}
+.btn:active{transform:translateY(1px)}
+.dragbox{border:2px dashed rgba(255,255,255,0.06);padding:18px;border-radius:12px;text-align:center;background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent)}
+.canvas-wrap{background:#000;border-radius:12px;border:2px solid rgba(255,255,255,0.04);overflow:hidden;display:flex;flex-direction:column}
+canvas{width:100%;height:auto;display:block;background:#000}
+.footer{margin-top:10px;text-align:center;color:var(--muted);font-size:0.9rem}
+.top-right{display:flex;gap:8px;align-items:center}
+.toggle{background:rgba(255,255,255,0.03);padding:8px;border-radius:999px;display:flex;gap:6px;align-items:center}
+.small-muted{font-size:0.85rem;color:var(--muted)}
+.progress{width:100%;height:12px;border-radius:10px;overflow:hidden;background:rgba(255,255,255,0.03);margin-top:8px}
+.progress > div{height:100%;width:0;background:linear-gradient(90deg,var(--primary),#6fb0ff)}
+.kv{display:flex;gap:8px;align-items:center}
+.file-label{display:inline-block;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,0.03);cursor:pointer}
+.flex-between{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.note{font-size:0.85rem;color:var(--muted);margin-top:6px}
+.footer-links{display:flex;gap:8px;justify-content:center;margin-top:8px}
+.badge{padding:6px 8px;border-radius:8px;background:rgba(255,255,255,0.03);font-weight:700;color:var(--muted)}
+/* Light mode adjustments (toggle by .light class on body) */
+body.light{
+  --bg-dark-1:#f7f8fb;
+  --bg-dark-2:#eef2fb;
+  --panel: rgba(12,18,28,0.04);
+  --primary:#0A84FF;
+  --muted:#55607a;
+  color:#0b1220;
+}
+body.light .controls-panel{background:rgba(12,18,28,0.03)}
+</style>
+</head>
+<body>
+<div class="header container" style="grid-template-columns:1fr">
+  <div class="brand">
+    <div class="logo">R</div>
+    <div>
+      <div class="title">Remou™ — Web Version</div>
+      <div class="small-muted">If the process feels too slow, you can download the Remou™ app for a faster and smoother experience.</div>
+    </div>
+  </div>
+  <div class="top-right">
+    <div class="small-muted">Mode</div>
+    <div class="toggle">
+      <button class="btn secondary" id="downloadAppBtn">Download App</button>
+      <button class="btn secondary" id="toggleTheme">Light / Dark</button>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <!-- LEFT: controls -->
+  <div class="controls-panel">
+    <div class="section">
+      <h3>Input</h3>
+      <label class="file-label">Choose file
+        <input id="upload" class="input" type="file" accept="video/*,image/*" style="display:none">
+      </label>
+      <div class="note">Or drag & drop into the preview area</div>
+    </div>
+
+    <div class="section">
+      <h3>Mode</h3>
+      <select id="mode" class="input">
+        <option value="chroma">Chroma Key (pick color)</option>
+        <option value="person">AI Person (auto)</option>
+      </select>
+
+      <div id="chromaTools" style="margin-top:8px">
+        <label>Pick color</label>
+        <input id="colorRemove" type="color" value="#00ff00"/>
+        <label>Threshold</label>
+        <input id="threshold" type="range" min="10" max="255" value="140"/>
+        <label>De-spill</label>
+        <input id="despill" type="range" min="0" max="100" value="25"/>
+        <label>Edge feather (px)</label>
+        <input id="feather" type="range" min="0" max="8" value="2"/>
+      </div>
+      <div id="aiNote" style="display:none;margin-top:8px" class="small-muted">AI person segmentation uses on-device MediaPipe — no uploads.</div>
+    </div>
+
+    <div class="section">
+      <h3>Strength & Options</h3>
+      <label>Strength</label>
+      <select id="strength" class="input">
+        <option value="soft">Soft</option>
+        <option value="medium" selected>Medium</option>
+        <option value="hard">Hard</option>
+      </select>
+
+      <label>Remove: (custom)</label>
+      <input id="customColor" type="color" value="#00ff00" class="input" />
+
+      <label>Background</label>
+      <select id="bgSelect" class="input">
+        <option value="none">None (transparent)</option>
+        <option value="image">Image</option>
+        <option value="video">Video</option>
+      </select>
+      <label class="file-label">Background file
+        <input id="bgUpload" type="file" accept="image/*,video/*" style="display:none"/>
+      </label>
+    </div>
+
+    <div class="section">
+      <h3>FPS & Quality</h3>
+      <label>FPS (1–500)</label>
+      <input id="fpsVal" type="number" min="1" max="500" value="60" class="input small"/>
+      <label>Quality preset</label>
+      <select id="quality" class="input">
+        <option value="144">144p</option><option value="240">240p</option><option value="360">360p</option>
+        <option value="480">480p</option><option value="720" selected>720p</option><option value="1080">1080p</option>
+        <option value="1440">1440p</option><option value="2160">2160p (4K)</option>
+        <option value="4320">4320p (8K)</option><option value="custom">Custom</option>
+      </select>
+      <div class="row" style="margin-top:8px">
+        <input id="outW" type="number" placeholder="Width" min="32" value="1280"/>
+        <input id="outH" type="number" placeholder="Height" min="32" value="720"/>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Export</h3>
+      <label>Format</label>
+      <select id="format" class="input">
+        <option value="webm">WEBM (fast)</option>
+        <option value="mp4">MP4 (compat)</option>
+        <option value="gif">GIF</option>
+        <option value="png">PNG (snapshot)</option>
+        <option value="jpg">JPG (snapshot)</option>
+      </select>
+      <label>MP4/GIF quality (CRF)</label>
+      <select id="mp4Quality" class="input">
+        <option value="28">Smaller</option>
+        <option value="23" selected>Balanced</option>
+        <option value="18">High</option>
+      </select>
+    </div>
+
+    <div class="section">
+      <div class="flex-between">
+        <div style="flex:1"><button id="startBtn" class="btn">Start Processing</button></div>
+        <div style="flex:1"><button id="downloadBtn" class="btn" style="background:#34C759">Download</button></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button id="snapshotBtn" class="btn secondary">Snapshot</button>
+        <button id="undoBtn" class="btn secondary">Undo</button>
+        <button id="redoBtn" class="btn secondary">Redo</button>
+        <button id="resetBtn" class="btn secondary">Reset</button>
+      </div>
+      <div class="note">Tip: For heavy exports choose WebM or lower resolution. MP4/GIF uses in-browser ffmpeg and can be slow.</div>
+    </div>
+
+    <div class="footer">
+      <div>All rights reserved. Made, Owned & Trademarked by <strong>Engineering Softcodes ™</strong></div>
+        <div>
+          <a href="contact.html">Contact</a> • 
+          <a href="terms-of-service.html">Terms Of Service</a> • 
+          <a href="policy-privacy.html">Policy Privacy</a> • 
+          <a href="legal.html">Legal</a> • 
+          <a href="support-us.html">Support Us</a>
+      </div>
+    </div>
+
+
+  <!-- RIGHT: preview + canvas -->
+  <div>
+    <div class="canvas-wrap">
+      <div id="dragTarget" class="dragbox" style="padding:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div class="kv">
+            <div class="small-muted">Preview</div>
+            <div style="margin-left:8px" id="status">Idle</div>
+          </div>
+          <div class="kv">
+            <div class="small-muted">Progress</div>
+            <div class="progress" style="width:220px"><div id="progressBar" style="width:0%"></div></div>
+          </div>
+        </div>
+        <canvas id="mainCanvas"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ========= Core: state & libs ========= */
+const mainCanvas = document.getElementById('mainCanvas');
+const ctx = mainCanvas.getContext('2d');
+const progressBar = document.getElementById('progressBar');
+const statusEl = document.getElementById('status');
+
+const uploadEl = document.getElementById('upload');
+const bgUpload = document.getElementById('bgUpload');
+const startBtn = document.getElementById('startBtn');
+const downloadBtn = document.getElementById('downloadBtn');
+const snapshotBtn = document.getElementById('snapshotBtn');
+const undoBtn = document.getElementById('undoBtn');
+const redoBtn = document.getElementById('redoBtn');
+const resetBtn = document.getElementById('resetBtn');
+const toggleThemeBtn = document.getElementById('toggleTheme');
+const downloadAppBtn = document.getElementById('downloadAppBtn');
+
+let srcVideo = null, srcImage = null;
+let bgVideo = null, bgImage = null;
+let recordedChunks = [];
+let mediaRecorder = null;
+let undoStack = [], redoStack = [];
+let selfieSeg = null, useAIMode = false;
+let ffmpegLoaded = false;
+const { createFFmpeg, fetchFile } = FFmpeg;
+const ffmpeg = createFFmpeg({ log:false });
+
+/* UI helpers */
+function setStatus(t){ statusEl.textContent = t; }
+function setProgress(p){ progressBar.style.width = `${p}%`; }
+function pushUndo(){ try{ undoStack.push(ctx.getImageData(0,0,mainCanvas.width,mainCanvas.height)); if(undoStack.length>30) undoStack.shift(); }catch(e){} }
+function undo(){ if(undoStack.length){ redoStack.push(ctx.getImageData(0,0,mainCanvas.width,mainCanvas.height)); ctx.putImageData(undoStack.pop(),0,0); } }
+function redo(){ if(redoStack.length){ undoStack.push(ctx.getImageData(0,0,mainCanvas.width,mainCanvas.height)); ctx.putImageData(redoStack.pop(),0,0); } }
+function resetAll(){ try{ mediaRecorder && mediaRecorder.state==='recording' && mediaRecorder.stop(); }catch(e){} ctx.clearRect(0,0,mainCanvas.width,mainCanvas.height); recordedChunks=[]; srcVideo=null; srcImage=null; bgVideo=null; bgImage=null; undoStack=[]; redoStack=[]; setStatus('Reset'); setProgress(0); }
+
+/* Theme toggle */
+toggleThemeBtn.addEventListener('click', ()=>{ document.body.classList.toggle('light'); });
+
+/* Drag & Drop to canvas */
+const dragTarget = document.getElementById('dragTarget');
+dragTarget.addEventListener('dragover', e=>{ e.preventDefault(); dragTarget.style.borderColor = 'rgba(255,255,255,0.2)'; });
+dragTarget.addEventListener('dragleave', e=>{ e.preventDefault(); dragTarget.style.borderColor = ''; });
+dragTarget.addEventListener('drop', e=>{ e.preventDefault(); dragTarget.style.borderColor = ''; const f = e.dataTransfer.files[0]; if(f) loadSourceFile(f); });
+
+uploadEl.addEventListener('change', ()=>{ if(uploadEl.files[0]) loadSourceFile(uploadEl.files[0]); });
+bgUpload.addEventListener('change', ()=>{ if(bgUpload.files[0]) loadBgFile(bgUpload.files[0]); });
+
+/* Mode toggle UI */
+const modeSel = document.getElementById('mode');
+const chromaTools = document.getElementById('chromaTools');
+const aiNote = document.getElementById('aiNote');
+modeSel.addEventListener('change', ()=>{ useAIMode = modeSel.value === 'person'; chromaTools.style.display = useAIMode ? 'none' : ''; aiNote.style.display = useAIMode ? '' : 'none'; });
+
+/* Size sync for quality */
+const qualitySel = document.getElementById('quality');
+const outW = document.getElementById('outW');
+const outH = document.getElementById('outH');
+qualitySel.addEventListener('change', ()=>{
+  const q = qualitySel.value;
+  const map = {144:144,240:240,360:360,480:480,720:720,1080:1080,1440:1440,2160:2160,4320:4320};
+  if(q==='custom') return;
+  const targetH = map[q] || 720;
+  const aspect = (mainCanvas.width && mainCanvas.height) ? mainCanvas.width/mainCanvas.height : (16/9);
+  outH.value = targetH;
+  outW.value = Math.max(64, Math.round(targetH * aspect));
+});
+
+/* Load background file */
+function loadBgFile(file){
+  if(file.type.startsWith('image')){ bgImage = new Image(); bgImage.src = URL.createObjectURL(file); setStatus('Background image loaded'); }
+  else if(file.type.startsWith('video')){ bgVideo = document.createElement('video'); bgVideo.src = URL.createObjectURL(file); bgVideo.loop=true; bgVideo.muted=true; bgVideo.play().catch(()=>{}); setStatus('Background video loaded'); }
+}
+
+/* Load main source file */
+function loadSourceFile(file){
+  if(file.type.startsWith('image')){
+    srcImage = new Image();
+    srcImage.onload = ()=>{ const target = computeSize(srcImage.width, srcImage.height); mainCanvas.width = target.w; mainCanvas.height = target.h; ctx.clearRect(0,0,target.w,target.h); ctx.drawImage(srcImage,0,0,target.w,target.h); pushUndo(); setStatus('Image loaded'); }
+    srcImage.src = URL.createObjectURL(file);
+  } else if(file.type.startsWith('video')){
+    if(srcVideo){ try{ srcVideo.pause(); }catch(e){} srcVideo = null; }
+    srcVideo = document.createElement('video');
+    srcVideo.src = URL.createObjectURL(file);
+    srcVideo.muted = true;
+    srcVideo.play().catch(()=>{});
+    srcVideo.addEventListener('loadeddata', ()=>{ const target = computeSize(srcVideo.videoWidth, srcVideo.videoHeight); mainCanvas.width = target.w; mainCanvas.height = target.h; setStatus('Video loaded'); });
+  } else { alert('Unsupported file type'); }
+}
+
+/* compute size from quality/outW/outH */
+function computeSize(srcW, srcH){
+  const q = qualitySel.value;
+  let w = parseInt(outW.value) || srcW;
+  let h = parseInt(outH.value) || srcH;
+  if(q !== 'custom'){
+    const map = {144:144,240:240,360:360,480:480,720:720,1080:1080,1440:1440,2160:2160,4320:4320};
+    const targetH = map[q] || 720;
+    const aspect = srcW/srcH;
+    h = targetH; w = Math.max(64, Math.round(h * aspect));
+  }
+  // ensure even
+  w = w - (w % 2); h = h - (h % 2);
+  return {w: Math.max(64,w), h: Math.max(64,h)};
+}
+
+/* ===== AI segmentation (MediaPipe) ===== */
+async function ensureSelfieSeg(){
+  if(selfieSeg) return selfieSeg;
+  selfieSeg = new SelfieSegmentation.SelfieSegmentation({ locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${f}` });
+  selfieSeg.setOptions({ modelSelection: 1 });
+  await selfieSeg.initialize();
+  return selfieSeg;
+}
+
+/* ===== FFmpeg (mp4/gif) loading ===== */
+async function ensureFFmpeg(){
+  if(ffmpegLoaded) return;
+  setStatus('Loading ffmpeg (heavy, wait a bit)...');
+  progressBar.style.width = '6%';
+  ffmpeg.setProgress(({ ratio })=>{ if(typeof ratio === 'number'){ progressBar.style.width = `${6 + Math.floor(Math.min(0.98, ratio)*92)}%`; }});
+  await ffmpeg.load();
+  ffmpegLoaded = true;
+  setStatus('ffmpeg ready');
+  progressBar.style.width = '0%';
+}
+
+/* ===== core chroma removal logic ===== */
+function applyChromaKeyOnCanvas(removeColor, threshold, despill, feather, strength){
+  try {
+    const w = mainCanvas.width, h = mainCanvas.height;
+    let img = ctx.getImageData(0,0,w,h);
+    let d = img.data;
+    let factor = (strength === 'soft')?0.6:(strength==='medium')?0.85:1.0;
+    for(let i=0;i<d.length;i+=4){
+      const r = d[i], g = d[i+1], b = d[i+2];
+      const dist = Math.hypot(r-removeColor.r, g-removeColor.g, b-removeColor.b);
+      if(dist < threshold){
+        const ratio = Math.max(0, Math.min(1, dist/threshold));
+        const alphaMul = (ratio + (1-factor)*(1-ratio));
+        d[i+3] = Math.round(d[i+3] * alphaMul);
+        // despill reduce greenish remnants by pulling color toward average
+        const avg = Math.round((r + g + b) / 3);
+        d[i]   = Math.round(d[i]   - (d[i]   - avg) * (despill/100));
+        d[i+1] = Math.round(d[i+1] - (d[i+1] - avg) * (despill/100));
+        d[i+2] = Math.round(d[i+2] - (d[i+2] - avg) * (despill/100));
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+
+    // lightweight feather via canvas blur (cheap)
+    if(feather > 0){
+      const tmp = document.createElement('canvas'); tmp.width = w; tmp.height = h;
+      const tctx = tmp.getContext('2d');
+      tctx.drawImage(mainCanvas, 0, 0);
+      ctx.clearRect(0,0,w,h);
+      ctx.filter = `blur(${feather}px)`;
+      ctx.drawImage(tmp, 0, 0);
+      ctx.filter = 'none';
+    }
+  } catch(e){ console.warn('chroma fail', e); }
+}
+
+/* ===== apply AI mask (person) ===== */
+async function applyAIMaskOnce(){
+  await ensureSelfieSeg();
+  return new Promise((resolve)=>{
+    // prepare offscreen image for selfieSeg
+    const tmp = document.createElement('canvas'); tmp.width = mainCanvas.width; tmp.height = mainCanvas.height;
+    const tctx = tmp.getContext('2d');
+    tctx.drawImage(mainCanvas, 0, 0);
+    selfieSeg.onResults((results)=>{
+      // results.segmentationMask is an ImageBitmap-like
+      // create mask canvas
+      const mask = document.createElement('canvas'); mask.width = tmp.width; mask.height = tmp.height;
+      const mctx = mask.getContext('2d');
+      mctx.drawImage(results.segmentationMask, 0, 0, mask.width, mask.height);
+      // composite: keep person (mask) over bg
+      // create image data of mainCanvas
+      // We'll use destination-in to keep only the masked area
+      // First, draw current canvas (foreground) into a temp
+      const fg = document.createElement('canvas'); fg.width = tmp.width; fg.height = tmp.height;
+      const fgctx = fg.getContext('2d'); fgctx.drawImage(tmp, 0, 0);
+      // draw background first
+      // then draw fg with mask as destination-in
+      // so we get person only
+      ctx.clearRect(0,0,mainCanvas.width,mainCanvas.height);
+      // background is assumed already drawn before calling this function
+      ctx.save();
+      ctx.drawImage(fg, 0, 0);
+      ctx.globalCompositeOperation = 'destination-in';
+      ctx.drawImage(mask, 0, 0);
+      ctx.restore();
+      resolve();
+    });
+    selfieSeg.send({ image: tmp });
+  });
+}
+
+/* ===== render loop for videos ===== */
+async function processVideoFlow(){
+  if(!srcVideo) return;
+  const fps = clamp(parseInt(document.getElementById('fpsVal').value||60,10),1,500);
+  const format = document.getElementById('format').value;
+  const mime = 'video/webm;codecs=vp8,opus';
+  recordedChunks = [];
+  // prepare canvas size
+  const target = computeSize(srcVideo.videoWidth, srcVideo.videoHeight);
+  mainCanvas.width = target.w; mainCanvas.height = target.h;
+
+  // MediaRecorder capture
+  const stream = mainCanvas.captureStream(fps);
+  try{ mediaRecorder = new MediaRecorder(stream, { mimeType: mime }); } catch(e){ mediaRecorder = new MediaRecorder(stream); }
+  mediaRecorder.ondataavailable = e=>{ if(e.data && e.data.size) recordedChunks.push(e.data); };
+  mediaRecorder.onstop = ()=> setStatus('Recording stopped — ready to export');
+  mediaRecorder.start(700);
+
+  setStatus('Processing video — this runs in-browser');
+  progressBar.style.width = '2%';
+
+  srcVideo.play().catch(()=>{});
+  const removeColor = hexToRgb(document.getElementById('colorRemove').value);
+  const threshold = parseInt(document.getElementById('threshold').value||140,10);
+  const despill = parseInt(document.getElementById('despill').value||25,10);
+  const feather = parseInt(document.getElementById('feather').value||2,10);
+  const strength = document.getElementById('strength').value;
+
+  function step(){
+    if(srcVideo.paused || srcVideo.ended){
+      try{ mediaRecorder && mediaRecorder.state === 'recording' && mediaRecorder.stop(); }catch(e){}
+      setProgress(100);
+      setStatus('Finished processing');
+      return;
+    }
+    // draw background then source
+    ctx.clearRect(0,0,mainCanvas.width,mainCanvas.height);
+    if(document.getElementById('bgSelect').value === 'image' && bgImage) ctx.drawImage(bgImage,0,0,mainCanvas.width,mainCanvas.height);
+    if(document.getElementById('bgSelect').value === 'video' && bgVideo) ctx.drawImage(bgVideo,0,0,mainCanvas.width,mainCanvas.height);
+    ctx.drawImage(srcVideo,0,0,mainCanvas.width,mainCanvas.height);
+
+    if(useAIMode){
+      // For performance, call async but we must await mask each frame
+      // We use applyAIMaskOnce which draws person-only on current canvas (composite)
+      // This is slower but necessary for best results
+      applyAIMaskOnce().then(()=>{/* done for frame */}).catch(()=>{/* ignore */});
+    } else {
+      applyChromaKeyOnCanvas(removeColor, threshold, despill, feather, strength);
+    }
+
+    const pct = Math.round((srcVideo.currentTime/srcVideo.duration)*100);
+    setProgress(pct);
+    requestAnimationFrame(step);
+  }
+  step();
+}
+
+/* ===== single-frame / image processing ===== */
+async function processImageOnce(){
+  if(!srcImage) return;
+  // compute output size
+  const target = computeSize(srcImage.width, srcImage.height);
+  mainCanvas.width = target.w; mainCanvas.height = target.h;
+  // draw background then source
+  ctx.clearRect(0,0,mainCanvas.width,mainCanvas.height);
+  if(document.getElementById('bgSelect').value === 'image' && bgImage) ctx.drawImage(bgImage,0,0,mainCanvas.width,mainCanvas.height);
+  if(document.getElementById('bgSelect').value === 'video' && bgVideo) ctx.drawImage(bgVideo,0,0,mainCanvas.width,mainCanvas.height);
+  ctx.drawImage(srcImage,0,0,mainCanvas.width,mainCanvas.height);
+  if(useAIMode){
+    await applyAIMaskOnce();
+  } else {
+    const removeColor = hexToRgb(document.getElementById('colorRemove').value);
+    const threshold = parseInt(document.getElementById('threshold').value||140,10);
+    const despill = parseInt(document.getElementById('despill').value||25,10);
+    const feather = parseInt(document.getElementById('feather').value||2,10);
+    const strength = document.getElementById('strength').value;
+    applyChromaKeyOnCanvas(removeColor, threshold, despill, feather, strength);
+  }
+  pushUndo();
+  setStatus('Image processed');
+}
+
+/* ===== start processing (image or video) ===== */
+startBtn.addEventListener('click', async ()=>{
+  if(!uploadEl.files[0]) return alert('Upload source first');
+  useAIMode = (modeSel.value === 'person');
+  // load background if needed
+  const bgType = document.getElementById('bgSelect').value;
+  if(bgType === 'image' && bgUpload.files[0]) bgImage = new Image(), bgImage.src = URL.createObjectURL(bgUpload.files[0]);
+  if(bgType === 'video' && bgUpload.files[0]) bgVideo = document.createElement('video'), bgVideo.src = URL.createObjectURL(bgUpload.files[0]), bgVideo.loop=true, bgVideo.muted=true, bgVideo.play().catch(()=>{});
+  // detect if source is image or video
+  const f = uploadEl.files[0];
+  if(!f) return alert('No file');
+  if(f.type.startsWith('image')){ srcImage = new Image(); srcImage.src = URL.createObjectURL(f); srcImage.onload = ()=> processImageOnce(); }
+  else { srcVideo = document.createElement('video'); srcVideo.src = URL.createObjectURL(f); srcVideo.muted=true; srcVideo.onloadeddata = ()=> processVideoFlow(); srcVideo.play().catch(()=>{}); }
+});
+
+/* ===== snapshot, download, transcode ===== */
+snapshotBtn.addEventListener('click', ()=>{
+  const fmt = document.getElementById('format').value;
+  if(fmt==='png' || fmt==='jpg'){
+    const mime = fmt === 'png' ? 'image/png' : 'image/jpeg';
+    const url = mainCanvas.toDataURL(mime, 0.92);
+    const a = document.createElement('a'); a.href = url; a.download = `remou_snapshot.${fmt}`; a.click();
+  } else {
+    alert('Snapshot is for PNG/JPG only — for videos use Start Processing and Download.');
+  }
+});
+
+downloadBtn.addEventListener('click', async ()=>{
+  const fmt = document.getElementById('format').value;
+  if(fmt === 'png' || fmt === 'jpg'){ snapshotBtn.click(); return; }
+  if(recordedChunks.length === 0){ alert('No processed video recorded yet — Run Start Processing and wait for it to finish.'); return; }
+  if(fmt === 'webm'){
+    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'remou_output.webm'; a.click();
+    setStatus('Downloaded WebM');
+    return;
+  }
+  // For MP4 and GIF use ffmpeg.wasm
+  await ensureFFmpeg();
+  setStatus('Transcoding (in-browser)... This may take long.');
+  progressBar.style.width = '4%';
+  const webm = new Blob(recordedChunks, { type: 'video/webm' });
+  const arrayBuffer = await webm.arrayBuffer();
+  ffmpeg.FS('writeFile', 'input.webm', new Uint8Array(arrayBuffer));
+  const target = document.getElementById('mp4Quality').value || '23';
+  try{
+    if(fmt === 'mp4'){
+      await ffmpeg.run('-i', 'input.webm', '-c:v', 'libx264', '-preset', 'fast', '-crf', target, '-movflags', 'faststart', 'out.mp4');
+      const data = ffmpeg.FS('readFile', 'out.mp4');
+      const blob = new Blob([data.buffer], { type: 'video/mp4' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'remou_result.mp4'; a.click();
+      setStatus('MP4 downloaded');
+    } else if(fmt === 'gif'){
+      await ffmpeg.run('-i', 'input.webm', '-vf', 'fps=15,scale=iw:-1:flags=lanczos,palettegen', 'palette.png');
+      await ffmpeg.run('-i', 'input.webm', '-i', 'palette.png', '-lavfi', 'fps=15,scale=iw:-1:flags=lanczos[x];[x][1:v]paletteuse', 'out.gif');
+      const data = ffmpeg.FS('readFile', 'out.gif');
+      const blob = new Blob([data.buffer], { type: 'image/gif' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'remou_result.gif'; a.click();
+      setStatus('GIF downloaded');
+    } else {
+      alert('Unknown format');
+    }
+  }catch(err){
+    console.error('ffmpeg transcode error', err);
+    alert('Transcoding failed. Try WebM or lower resolution.');
+    setStatus('Transcode failed');
+  } finally {
+    progressBar.style.width = '0%';
+  }
+});
+
+/* Helper hex to rgb */
+function hexToRgb(hex){
+  const v = parseInt(hex.replace('#',''),16);
+  return { r:(v>>16)&255, g:(v>>8)&255, b:v&255 };
+}
+
+/* clamp helper */
+function clamp(v, a, b){ return Math.min(b, Math.max(a, v)); }
+
+/* simple UI app placeholder for download App button */
+downloadAppBtn.addEventListener('click', ()=> alert('App builds will be available later — placeholders for Windows/macOS/Linux/Android/iOS.'));
+
+
+// Expose some helpful buttons
+undoBtn.addEventListener('click', ()=> undo());
+redoBtn.addEventListener('click', ()=> redo());
+resetBtn.addEventListener('click', ()=> resetAll());
+
+/* small safety: keep progress visible small refresh */
+setInterval(()=>{ /* no-op keep UI responsive */ }, 1000);
+
+/* initial status */
+setStatus('Ready — pick a file or drag & drop');
+</script>
+</body>
+</html>
